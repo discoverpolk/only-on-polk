@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<meta http-equiv="Access-Control-Allow-Origin" content="*">
+<title>CREATIVE ASSET INVENTORY</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="jquery/jquery-1.6.4.min.js"></script>
+
+
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
+   integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
+   crossorigin=""/>
+ <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
+   integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
+   crossorigin=""></script>
+ <script src="randomColor.min.js"></script>
+ 
+   <!-- Tabletop to access Google spreadsheets - THANK YOU AMAZING HUMANS WHO CREATED THIS!! LOVE LOVE LOVE-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.js"></script>
+  
+ <!-- FontAaaawwwwesome -->  
+  <script src="https://use.fontawesome.com/0a9a58d8dc.js"></script>  
+ <script src='https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.0.1/leaflet-omnivore.min.js'></script>
+ 
+   <!-- Load Esri Leaflet from CDN -->
+    <script src="https://unpkg.com/esri-leaflet@2.0.8"></script>
+ 
+ <!-- Esri Leaflet Geocoder -->
+    <link rel="stylesheet" href="https://unpkg.com/esri-leaflet-geocoder@2.2.6/dist/esri-leaflet-geocoder.css">
+    <script src="https://unpkg.com/esri-leaflet-geocoder@2.2.6"></script>
+	
+ <!-- FUSE - thanks, Kiro -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.0.4/fuse.min.js"></script>
+
+
+<link rel="stylesheet" href="css/cai.css" />
+
+
+
+<style>
+		
+</style>
+
+</head>				
+	
+<body>
+
+<div id="iconBar"><img src="sf-logo.png" width="90px" style="float:left"><img src="ct-logo.png" height="90px" style="float:left; padding-right:20px;"></div>
+<div name="titlebar" >
+	<div id="header">
+		<h1 style="color:#fff;">CREATIVE ASSETS INVENTORY</h1>
+	</div>
+</div>
+
+<div class="topnav" id="topMenu">
+  <a href="survey.html">Add an Asset!</a>
+  <a href="connect.html">Get Involved</a>
+  <a href="directory.html">Directory</a>
+  <a href="map.html">Map</a>
+    <a href="index.html">About</a>
+  <a href="javascript:void(0);" style="font-size:15px;" class="icon" onclick="loadMenu()"><i class='fa fa-bars fa-lg'></i></a>
+</div>
+
+<h1>Assets Found:<span id = "total"><i id='spinnie' class="fa fa-spinner fa-spin" style="color:#f69729;"></i></span></h1>
+<span style='font-family:"bebas_neuebold", sans-serif; font-size:100%; letter-spacing:.1em;color:#444;padding-right:15px;'>Search</span><input type="text" id="assetquery"><button type="button" onclick="getSearchedAssets()"><i class="fa fa-search" style="color:#f69729;"></i></button><button type="button" style='float:left;font-family:"bebas_neuebold", sans-serif; font-size:100%; letter-spacing:.1em;color:#444' onclick="displayAllAssets()">Show All Assets</button>
+<br><br>
+
+<div id="assetTableHolder" style="width:100%;"></div>
+<script type="text/javascript">
+
+function loadMenu() {
+    var x = document.getElementById("topMenu");
+    if (x.className === "topnav") {
+        x.className += " responsive";
+    } else {
+        x.className = "topnav";
+    }
+}
+
+function sortName(a,b) {
+	  if (a.a_name < b.a_name)
+		return -1;
+	  if (a.a_name > b.a_name)
+		return 1;
+	  return 0;
+	}
+
+Tabletop.init({
+    	key: "https://docs.google.com/spreadsheets/d/1KmiXvp4S-kEJ23iaDox2T4PX__MfIOAk1rnghr3hmeo/edit?usp=sharing",
+    	callback: setupAssets,
+    	simpleSheet: true,
+    	debug: false
+    });
+				
+function getAssetColor(d) {
+  switch (d) {
+    case 'Space or Facility (includes vacant spaces)':
+      return '#4CAF50';
+	case 'Creative Places -- Cultural Facilities, Natural/Urban Spaces, Potential Resources':
+	        return '#4CAF50';
+    case 'Cultural Industries and Businesses':
+      return '#03A9F4';
+    case 'Supporting Resources':
+      return '#FFC107';
+    case 'Business':
+      return '#03A9F4';
+    case 'Creative People -- Cultural Professionals and Artists':
+      return '#F44336';
+    case 'Cultural Institutions, Nonprofits, and Educational Organizations':
+      return '#FF5722';
+	case 'Community Cultural Associations':
+		return '#795548';
+    case 'Cultural Events and Festivals':
+      return '#673AB7';
+    default:
+      return '#FFEDA0';
+  }
+  }
+
+var assetList = [];
+var assetsByCategory = {"people":[], "businesses":[], "places":[], "institutions":[], "associations":[], "events":[], "supporting":[], "other":[]};
+
+function categorizeAsset(d) {
+	switch (d.a_type) {
+				case 'Cultural Industries and Businesses':
+					assetsByCategory.businesses.push(d);
+					break;
+					case 'Supporting Resources':
+					assetsByCategory.supporting.push(d);
+					break;
+					case 'Creative People -- Cultural Professionals and Artists':
+					 assetsByCategory.people.push(d);
+					break;
+					case 'Cultural Institutions, Nonprofits, and Educational Organizations':
+					  assetsByCategory.institutions.push(d);
+					break;
+					case 'Creative Places -- Cultural Facilities, Natural/Urban Spaces, Potential Resources':
+					  assetsByCategory.places.push(d);
+						break;
+					case 'Community Cultural Associations':
+						assetsByCategory.associations.push(d);
+					break;
+					case 'Cultural Events and Festivals':
+					 assetsByCategory.events.push(d);
+					break;
+
+				default:
+					 assetsByCategory.other.push(d);
+					break;	
+	}
+}	
+
+var converter = ["people","businesses","places","institutions","associations","events","supporting", "other"];
+
+function displayCategory(q) {
+	if (q.style.display == 'block') {
+			q.style.display = 'none';
+	}
+	else if (q.style.display =='none') {
+		q.style.display = 'block';
+	}
+}
+
+var tally = 0;
+var dataJson;
+
+function displayAllAssets(){
+	setupCategories(allAssets);
+}
+
+function setupCategories(data) {
+	tally=0;
+	document.getElementById("assetTableHolder").innerHTML='';
+	assetsByCategory = {"people":[], "businesses":[], "places":[], "institutions":[], "associations":[], "events":[], "supporting":[], "other":[]};
+	for (i=0;i<=data.length-1;i++) {
+		if ((data[i].subdate != ''&&data[i].a_type !='#REF!')) {
+			tally+=1;
+			categorizeAsset(data[i]);
+			}
+		}
+	var q = 0;
+	for (x in assetsByCategory){
+		if (assetsByCategory[x][0] != undefined) {
+		assetsByCategory[x].sort(sortName);
+		var a_type = assetsByCategory[x][0].a_type;
+		var categoryname = 'category' + q;
+		document.getElementById("assetTableHolder").innerHTML+=
+			"<div class='assetCategoryTitle'>" +
+			"<table class='spacer' ></table>"+
+			"<h2 onClick = 'displayCategory(" + categoryname + ")'>" + 
+			"<i class='fa fa-circle fa-lg' style='padding-right:10px; color:" + getAssetColor(a_type) + "'></i>" + a_type + 
+			"</h2>" + 
+			"<ul class = 'assetCategory' id='" + categoryname + "' style='margin-top:-10px;display:none'>" + 
+			"</ul>" +
+			"</div>" ;
+		displayAssets(assetsByCategory[x],categoryname);
+		q++;
+		}
+	}
+	replaceSpinner(tally);
+
+}
+
+assetList=[];
+allAssets=[];
+
+function getSearchedAssets() {
+	var querystring = $('#assetquery').val();
+	len = querystring.length;
+	console.log(querystring);
+	var options = {
+		shouldSort: true,
+		threshold: 0.3,
+		location: 0,
+		distance: 100,
+		maxPatternLength: 32,
+		minMatchCharLength: len,
+		keys: [
+			"a_name",
+			"a_town",
+			"pub_add",
+			"c_occ",
+			"a_desc"
+		]
+	};
+	var fuse = new Fuse(allAssets, options); 
+	var result = fuse.search(querystring);
+	console.log(result.length);
+	setupCategories(result);
+	replaceSpinner(result.length);
+	for (i=0;i<=7;i++){
+		cat = "category"+i;
+		if (document.getElementById(cat) != null) {
+			document.getElementById(cat).style.display = 'block';
+		};
+	}
+}
+
+function setupAssets(data) {
+	allAssets = data;
+	setupCategories(allAssets);	
+	replaceSpinner(tally);
+}
+
+function replaceSpinner(n) {
+	document.getElementById('total').innerHTML = n;
+}
+
+
+function cleanLink(lk) {
+	var httpsFind = lk.search('https://');
+	cleaned = '';
+	if (httpsFind == -1) {
+		var httpFind = lk.search('http://');
+		if (httpFind == -1) {
+			var instaHandle = lk.search('@');
+			if (instaHandle != -1) {
+				cleaned = 'http://www.instagram.com/' + lk.substr(0, lk.length-1);
+			}
+			else {
+				cleaned = 'http://' + lk.trim();
+			}
+		}
+		else cleaned = lk;
+	}
+	else cleaned = lk;
+	return cleaned;
+}
+
+
+function displayAssets(k,c) {
+			assetList = k;
+//			console.log(c);
+			var linkCleaned = '';
+			for (n=0; n<=assetList.length-1; n++) {
+				var websitespacer = '';
+				if (assetList[n].website != '') {
+					linkCleaned = cleanLink(assetList[n].website);
+				}
+				var locationCompile;
+				var siteNum;
+				
+				if (assetList[n].pub_add != '') {
+					locationCompile = 
+						"<b>" +
+						"<span class='maplink' onClick='' style='line-height:2em'><i class = 'fa fa-map-marker fa-lg'></i></span>" +
+						assetList[n].pub_add + 
+						"</b>" + 
+						"</br>";						;
+					}
+				else {
+					locationCompile = 
+						"<b>" +
+						assetList[n].town +
+						"</b>" + 
+						"</br>";
+					}	
+				
+				var picSetup = '';
+				
+				if ((assetList[n].photolink != null) && (assetList[n].photolink != '') && (assetList[n].photolink != undefined)) {
+					picSetup = 
+						"<div class='imgcontainer'>" + 
+						"<img class = 'assetPic' src='" + assetList[n].photolink + "'>" +
+						"</div>";
+				}
+				
+				var websiteCompile = '';
+				
+				if ((linkCleaned != '')) {
+					websiteCompile = 	"<a style='line-height:1.5em;margin-bottom:3px;' href='"+ linkCleaned +"'>" + assetList[n].website + "</a><br>";
+				}
+				else {websiteCompile = '';}
+<!-- 				
+				var facilityCompile = '';
+				if ((assetList[n].artistspace != null) && (assetList[n].artistspace != undefined) || (assetList[n].artistspace != ''))  {
+					facilityCompile = "<b>Space description:</b> " + assetList[n].artistspace + "<br>";
+				}
+				
+				else if ((assetList[n].f_desc != '') && (assetList[n].f_desc != undefined) || (assetList[n].f_desc != '')) {
+					facilityCompile = "<b>Space description:</b>" +	assetList[n].f_desc + "<br>";
+				}
+				
+				else {facilityCompile = '';}
+				
+-->				
+				var editCompile = '';
+				
+				var eventSetup = '';
+				if ((assetList[n].a_type == 'Cultural Events and Festivals') && (assetList[n].event_time != null)) {
+					eventSetup = "<br><b>WHEN: </b>"+ assetList[n].event_time + "<br>";
+				}
+				
+				var regularTitleSetup =  
+				"<div class='regularTitle'>" +
+				"<h4>" + assetList[n].a_name + "</h4>" +
+				locationCompile +
+				websiteCompile +
+				eventSetup +
+				"</div>";
+				
+				var mobileTitleSetup =  
+				"<div class='mobileTitle'>" +
+				"<h4>" + assetList[n].a_name + "</h4>" +
+				locationCompile +
+				websiteCompile +
+				eventSetup +
+				"</div>";
+
+				var info = 	
+				mobileTitleSetup +	
+				picSetup +
+				regularTitleSetup +	
+				"<div class='assetDesc'>" +
+				assetList[n].a_desc + "<br><br>" +
+//				editCompile +
+//				facilityCompile +
+				"</div>" ;
+				
+				assetContainerID = n.toString();
+				
+				document.getElementById(c).innerHTML +=
+				"<div class='artPod'>" +
+				"<table id='"+ assetContainerID + "'>" + 
+				info +
+				"</table>" + 
+				"<table class='spacer'></table>"+
+				"</div>" ;
+			}
+	
+
+}
+
+
+
+		
+			
+			
+
+			
+
+	
+</script> 
+  
+
+</body>
+</html>
