@@ -1,2 +1,2 @@
-# creativehunterdon
-Clone of Creative Asset Inventory
+# onlyonpolk
+Only on Polk Street!
