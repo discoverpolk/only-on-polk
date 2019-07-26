@@ -1,4 +1,5 @@
 
+
 @font-face {
     font-family: 'bebas_neuebold';
     src: url('bebasneue_bold-webfont.woff2') format('woff2'),
@@ -240,7 +241,7 @@ padding-right:10px;
 .sitePic {width:300px; padding:20px;}
 .siteDesc {padding:10px;width:90%;margin-top:-20px;}
 
-.assetPodSmall{width:200px;height:240px;overflow-y:hidden;padding:10px;overflow-x:hidden;float:left;border: solid 2px #eee}
+.assetPodSmall{width:200px;height:330px;overflow-y:hidden;padding:10px;overflow-x:hidden;float:left;border: solid 2px #eee}
 .assetPodSmall h3 {color:#444}
 
 .imgcontainersmall{height:180px;width:180px;overflow:hidden;}
